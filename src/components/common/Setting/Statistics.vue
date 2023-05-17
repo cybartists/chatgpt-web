@@ -1,11 +1,11 @@
 <script setup lang='ts'>
 import { onMounted, ref } from 'vue'
-import {NCol, NDatePicker, NIcon, NNumberAnimation, NRow, NSpin, NStatistic} from 'naive-ui'
+import { NCol, NDatePicker, NIcon, NNumberAnimation, NRow, NSpin, NStatistic } from 'naive-ui'
 import { BarChart } from 'vue-chart-3'
 import { Chart, registerables } from 'chart.js'
 import { t } from '@/locales'
 import { fetchUserStatistics } from '@/api'
-import {SvgIcon} from "@/components/common";
+import { SvgIcon } from '@/components/common'
 
 Chart.register(...registerables)
 
@@ -135,9 +135,9 @@ onMounted(() => {
         </div>
 
         <BarChart
-          style="aspect-ratio: 3/2;"
           v-show="chartData.labels.length"
           ref="statisticsChart"
+          style="aspect-ratio: 3/2;"
           :config="chartConfig"
           :chart-data="chartData"
         />

@@ -10,7 +10,9 @@ import { clearConfigCache, getCacheConfig, getOriginConfig } from './storage/con
 import type { AuditConfig, ChatInfo, ChatOptions, Config, MailConfig, SiteConfig, UsageResponse, UserInfo } from './storage/model'
 import { Status } from './storage/model'
 import {
+  addUserCash,
   clearChat,
+  consumeUserCash,
   createChatRoom,
   createUser,
   deleteAllChatRooms,
@@ -23,6 +25,7 @@ import {
   getChats,
   getUser,
   getUserById,
+  getUserList,
   getUserStatisticsByDay,
   insertChat,
   insertChatUsage,
@@ -295,6 +298,11 @@ router.post('/chat-process', [auth, limiter], async (req, res) => {
 
   let { roomId, uuid, regenerate, prompt, options = {}, systemMessage, temperature, top_p } = req.body as RequestProps
   const userId = req.headers.userId as string
+  const userInfo = await getUserById(userId)
+  if (userInfo.cash <= 0) {
+    res.send({ status: 'Fail', message: '余额不足' })
+    return
+  }
   const room = await getChatRoom(userId, roomId)
   if (room != null && isNotEmptyString(room.prompt))
     systemMessage = room.prompt
@@ -380,6 +388,8 @@ router.post('/chat-process', [auth, limiter], async (req, res) => {
       }
 
       if (result.data.detail?.usage) {
+        const tokens = (result.data.detail?.usage as UsageResponse).total_tokens
+        await consumeUserCash(userId, tokens)
         await insertChatUsage(new ObjectId(req.headers.userId),
           roomId,
           message._id,
@@ -562,6 +572,21 @@ router.post('/user-info', auth, async (req, res) => {
   }
 })
 
+router.post('/premium-info', auth, async (req, res) => {
+  try {
+    const userId = req.headers.userId.toString()
+
+    const user = await getUserById(userId)
+    if (user == null || user.status !== Status.Normal)
+      throw new Error('用户不存在 | User does not exist.')
+    const data = { cash: user.cash }
+    res.send({ status: 'Success', message: '', data })
+  }
+  catch (error) {
+    res.send({ status: 'Fail', message: error.message, data: null })
+  }
+})
+
 router.post('/verify', async (req, res) => {
   try {
     const { token } = req.body as { token: string }
@@ -724,6 +749,39 @@ router.post('/statistics/by-day', auth, async (req, res) => {
 
     const data = await getUserStatisticsByDay(new ObjectId(userId as string), start, end)
     res.send({ status: 'Success', message: '', data })
+  }
+  catch (error) {
+    res.send(error)
+  }
+})
+
+router.post('/admin/user-list', rootAuth, async (req, res) => {
+  try {
+    const data = await getUserList()
+    res.send({ status: 'Success', message: '', data })
+  }
+  catch (error) {
+    res.send(error)
+  }
+})
+
+router.post('/admin/charge', rootAuth, async (req, res) => {
+  try {
+    const { email, cash } = req.body as { email: string; cash: number }
+    await addUserCash(email, cash)
+    res.send({ status: 'Success', message: '' })
+  }
+  catch (error) {
+    res.send(error)
+  }
+})
+
+router.post('/admin/register', rootAuth, async (req, res) => {
+  try {
+    const { username, password } = req.body as { username: string; password: string }
+    const newPassword = md5(password)
+    await createUser(username, newPassword)
+    res.send({ status: 'Success', message: '' })
   }
   catch (error) {
     res.send(error)

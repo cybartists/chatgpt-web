@@ -7,6 +7,7 @@ export interface UserInfo {
   name: string
   description: string
   root: boolean
+  cash: number
 }
 
 export interface UserState {
@@ -20,6 +21,7 @@ export function defaultSetting(): UserState {
       name: '',
       description: '',
       root: false,
+      cash: 0,
     },
   }
 }

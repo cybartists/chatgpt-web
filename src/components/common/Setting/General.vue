@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NButton, NInput, NPopconfirm, NSelect, useMessage } from 'naive-ui'
+import type { PremiumInfo } from './model'
 import type { Language, Theme } from '@/store/modules/app/helper'
 import { SvgIcon } from '@/components/common'
 import { useAppStore, useUserStore } from '@/store'
@@ -8,8 +9,9 @@ import type { UserInfo } from '@/store/modules/user/helper'
 import { getCurrentDate } from '@/utils/functions'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { t } from '@/locales'
-import { fetchClearAllChat } from '@/api'
+import { fetchClearAllChat, fetchPremiumInfo } from '@/api'
 
+const loading = ref(false)
 const appStore = useAppStore()
 const userStore = useUserStore()
 
@@ -26,6 +28,8 @@ const avatar = ref(userInfo.value.avatar ?? '')
 const name = ref(userInfo.value.name ?? '')
 
 const description = ref(userInfo.value.description ?? '')
+
+const preimumInfo = ref<PremiumInfo>()
 
 const language = computed({
   get() {
@@ -115,97 +119,120 @@ function handleImportButtonClick(): void {
   if (fileInput)
     fileInput.click()
 }
+
+async function fetchPremium() {
+  try {
+    loading.value = true
+    const { data } = await fetchPremiumInfo<PremiumInfo>()
+    preimumInfo.value = data
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchPremium()
+})
 </script>
 
 <template>
-  <div class="p-4 space-y-5 min-h-[200px]">
-    <div class="space-y-6">
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.name') }}</span>
-        <div class="w-[200px]">
-          <NInput v-model:value="name" placeholder="" />
+  <NSpin :show="loading">
+    <div class="p-4 space-y-5 min-h-[200px]">
+      <div class="space-y-6">
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.name') }}</span>
+          <div class="w-[200px]">
+            <NInput v-model:value="name" placeholder="" />
+          </div>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.description') }}</span>
-        <div class="flex-1">
-          <NInput v-model:value="description" placeholder="" />
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.description') }}</span>
+          <div class="flex-1">
+            <NInput v-model:value="description" placeholder="" />
+          </div>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.avatarLink') }}</span>
-        <div class="flex-1">
-          <NInput v-model:value="avatar" placeholder="" />
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.avatarLink') }}</span>
+          <div class="flex-1">
+            <NInput v-model:value="avatar" placeholder="" />
+          </div>
         </div>
-      </div>
-      <div
-        class="flex items-center space-x-4"
-        :class="isMobile && 'items-start'"
-      >
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.chatHistory') }}</span>
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.cash') }}</span>
+          <span class="flex-1">
+            {{ preimumInfo?.cash }}
+          </span>
+        </div>
+        <div
+          class="flex items-center space-x-4"
+          :class="isMobile && 'items-start'"
+        >
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.chatHistory') }}</span>
 
-        <div class="flex flex-wrap items-center gap-4">
-          <NButton size="small" @click="exportData">
-            <template #icon>
-              <SvgIcon icon="ri:download-2-fill" />
-            </template>
-            {{ $t('common.export') }}
-          </NButton>
+          <div class="flex flex-wrap items-center gap-4">
+            <NButton size="small" @click="exportData">
+              <template #icon>
+                <SvgIcon icon="ri:download-2-fill" />
+              </template>
+              {{ $t('common.export') }}
+            </NButton>
 
-          <input id="fileInput" type="file" style="display:none" @change="importData">
-          <NButton size="small" @click="handleImportButtonClick">
-            <template #icon>
-              <SvgIcon icon="ri:upload-2-fill" />
-            </template>
-            {{ $t('common.import') }}
-          </NButton>
+            <input id="fileInput" type="file" style="display:none" @change="importData">
+            <NButton size="small" @click="handleImportButtonClick">
+              <template #icon>
+                <SvgIcon icon="ri:upload-2-fill" />
+              </template>
+              {{ $t('common.import') }}
+            </NButton>
 
-          <NPopconfirm placement="bottom" @positive-click="clearData">
-            <template #trigger>
-              <NButton size="small">
+            <NPopconfirm placement="bottom" @positive-click="clearData">
+              <template #trigger>
+                <NButton size="small">
+                  <template #icon>
+                    <SvgIcon icon="ri:close-circle-line" />
+                  </template>
+                  {{ $t('common.clear') }}
+                </NButton>
+              </template>
+              {{ $t('chat.clearHistoryConfirm') }}
+            </NPopconfirm>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.theme') }}</span>
+          <div class="flex flex-wrap items-center gap-4">
+            <template v-for="item of themeOptions" :key="item.key">
+              <NButton
+                size="small"
+                :type="item.key === theme ? 'primary' : undefined"
+                @click="appStore.setTheme(item.key)"
+              >
                 <template #icon>
-                  <SvgIcon icon="ri:close-circle-line" />
+                  <SvgIcon :icon="item.icon" />
                 </template>
-                {{ $t('common.clear') }}
               </NButton>
             </template>
-            {{ $t('chat.clearHistoryConfirm') }}
-          </NPopconfirm>
+          </div>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.theme') }}</span>
-        <div class="flex flex-wrap items-center gap-4">
-          <template v-for="item of themeOptions" :key="item.key">
-            <NButton
-              size="small"
-              :type="item.key === theme ? 'primary' : undefined"
-              @click="appStore.setTheme(item.key)"
-            >
-              <template #icon>
-                <SvgIcon :icon="item.icon" />
-              </template>
-            </NButton>
-          </template>
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.language') }}</span>
+          <div class="flex flex-wrap items-center gap-4">
+            <NSelect
+              style="width: 140px"
+              :value="language"
+              :options="languageOptions"
+              @update-value="value => appStore.setLanguage(value)"
+            />
+          </div>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.language') }}</span>
-        <div class="flex flex-wrap items-center gap-4">
-          <NSelect
-            style="width: 140px"
-            :value="language"
-            :options="languageOptions"
-            @update-value="value => appStore.setLanguage(value)"
-          />
+        <div class="flex items-center space-x-4">
+          <span class="flex-shrink-0 w-[100px]">{{ $t('setting.saveUserInfo') }}</span>
+          <NButton type="primary" @click="updateUserInfo({ avatar, name, description })">
+            {{ $t('common.save') }}
+          </NButton>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex-shrink-0 w-[100px]">{{ $t('setting.saveUserInfo') }}</span>
-        <NButton type="primary" @click="updateUserInfo({ avatar, name, description })">
-          {{ $t('common.save') }}
-        </NButton>
       </div>
     </div>
-  </div>
+  </NSpin>
 </template>

@@ -59,3 +59,7 @@ export class AuditConfig {
   customizeEnabled?: boolean
   sensitiveWords?: string
 }
+
+export class PremiumInfo {
+  cash?: number
+}

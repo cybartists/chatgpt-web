@@ -223,3 +223,10 @@ export function fetchUserStatistics<T = any>(start: number, end: number) {
     data: { start, end },
   })
 }
+
+export function fetchPremiumInfo<T = any>() {
+  return post<T>({
+    url: '/premium-info',
+    data: { },
+  })
+}

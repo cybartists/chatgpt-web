@@ -1,8 +1,8 @@
 import { MongoClient, ObjectId } from 'mongodb'
 import * as dotenv from 'dotenv'
+import dayjs from 'dayjs'
 import { ChatInfo, ChatRoom, ChatUsage, Status, UserInfo } from './model'
 import type { ChatOptions, Config, UsageResponse } from './model'
-import dayjs from "dayjs";
 
 dotenv.config()
 
@@ -191,6 +191,10 @@ export async function getUser(email: string): Promise<UserInfo> {
   return await userCol.findOne({ email }) as UserInfo
 }
 
+export async function getUserList(): Promise<UserInfo[]> {
+  return await userCol.find().toArray() as UserInfo[]
+}
+
 export async function getUserById(userId: string): Promise<UserInfo> {
   return await userCol.findOne({ _id: new ObjectId(userId) }) as UserInfo
 }
@@ -198,6 +202,24 @@ export async function getUserById(userId: string): Promise<UserInfo> {
 export async function verifyUser(email: string, status: Status) {
   email = email.toLowerCase()
   return await userCol.updateOne({ email }, { $set: { status, verifyTime: new Date().toLocaleString() } })
+}
+
+export async function addUserCash(email: string, add_cash: number) {
+  const userInfo = await userCol.findOne({ email }) as UserInfo
+  let cash = userInfo.cash
+  if (Number.isNaN(cash))
+    cash = 0
+  cash += add_cash
+  await userCol.updateOne({ email }, { $set: { cash } })
+}
+
+export async function consumeUserCash(userId: string, consume_cash: number) {
+  const userInfo = await userCol.findOne({ _id: new ObjectId(userId) }) as UserInfo
+  let cash = userInfo.cash
+  if (Number.isNaN(cash))
+    cash = 0
+  cash -= consume_cash
+  await userCol.updateOne({ _id: new ObjectId(userId) }, { $set: { cash } })
 }
 
 export async function getConfig(): Promise<Config> {

@@ -16,6 +16,7 @@ export class UserInfo {
   email: string
   password: string
   status: Status
+  cash: number
   createTime: string
   verifyTime?: string
   avatar?: string
@@ -26,6 +27,7 @@ export class UserInfo {
     this.email = email
     this.password = password
     this.status = Status.PreVerify
+    this.cash = 0
     this.createTime = new Date().toLocaleString()
     this.verifyTime = null
     this.updateTime = new Date().toLocaleString()
